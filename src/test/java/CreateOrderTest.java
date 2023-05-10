@@ -3,12 +3,11 @@ import io.restassured.RestAssured;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.response.ValidatableResponse;
+import org.example.client.IngredientsClient;
 import org.example.client.OrderClient;
 import org.example.client.UserClient;
 import org.example.generator.UserGenerator;
-import org.example.model.OrderData;
-import org.example.model.User;
-import org.example.model.UserCredentials;
+import org.example.model.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -60,8 +59,9 @@ public class CreateOrderTest {
         assertEquals("Неверный status code", 200, statusCode);
         assertTrue("Пользователь не авторизован", isSuccess);
 
-        List<String> ingredients = List.of("61c0c5a71d1f82001bdaaa6c");
-        OrderData orderData = new OrderData(ingredients);
+        List<IngredientData> ingredientDataList = getIngredientsDataList();
+
+        OrderData orderData = new OrderData(List.of(ingredientDataList.get(0).getId()));
         ValidatableResponse createOrderResponse = orderClient.create(orderData, accessToken);
         statusCode = createOrderResponse.extract().statusCode();
         isSuccess = createOrderResponse.extract().path("success");
@@ -98,7 +98,7 @@ public class CreateOrderTest {
 
     @Test
     @Description("Создать заказ с неверным хешем ингредиентов")
-    public void CreateOrderWithInvalidHashOfIngredientsTest() {
+    public void createOrderWithInvalidHashOfIngredientsTest() {
         User user = UserGenerator.getRandom();
         ValidatableResponse createResponse = userClient.create(user);
         int statusCode = createResponse.extract().statusCode();
@@ -123,8 +123,9 @@ public class CreateOrderTest {
     @Test
     @Description("Создать заказ без авторизации")
     public void createOrderWithoutAuthorizationTest() {
-        List<String> ingredients = List.of("61c0c5a71d1f82001bdaaa6c");
-        OrderData orderData = new OrderData(ingredients);
+        List<IngredientData> ingredientDataList = getIngredientsDataList();
+
+        OrderData orderData = new OrderData(List.of(ingredientDataList.get(0).getId()));
         ValidatableResponse createOrderResponse = orderClient.create(orderData, "");
         int statusCode = createOrderResponse.extract().statusCode();
         boolean isSuccess = createOrderResponse.extract().path("success");
@@ -149,14 +150,23 @@ public class CreateOrderTest {
         assertEquals("Неверный status code", 200, statusCode);
         assertTrue("Пользователь не авторизован", isSuccess);
 
-        List<String> ingredients = List.of("61c0c5a71d1f82001bdaaa6c");
-        OrderData orderData = new OrderData(ingredients);
+        List<IngredientData> ingredientDataList = getIngredientsDataList();
+
+        OrderData orderData = new OrderData(List.of(ingredientDataList.get(0).getId()));
         ValidatableResponse createOrderResponse = orderClient.create(orderData, accessToken);
         statusCode = createOrderResponse.extract().statusCode();
         isSuccess = createOrderResponse.extract().path("success");
         String id = createOrderResponse.extract().path("order.ingredients[0]._id");
         assertEquals("Неверный status code", 200, statusCode);
-        assertEquals("Не совпадают id", ingredients.get(0), id);
+        assertEquals("Не совпадают id", ingredientDataList.get(0).getId(), id);
         assertTrue("Заказ не создан", isSuccess);
+    }
+    private List<IngredientData> getIngredientsDataList() {
+        IngredientsClient ingredientsClient = new IngredientsClient();
+        Ingredients ingredients = ingredientsClient.get();
+        assertTrue("Ингредиенты не получены", ingredients.isSuccess());
+        assertFalse("Список ингредиентов пуст", ingredients.getData().isEmpty());
+
+        return ingredients.getData();
     }
 }
